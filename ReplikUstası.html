@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ReplikUstası v9 - Sahne Seçimi</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #FFD700; 
+            --bg: #121212;
+            --panel: #1E1E1E;
+            --text: #E0E0E0;
+            --active-bg: #333;
+            --success: #4caf50;
+            --danger: #e53935;
+            --hint: #03A9F4;
+            --drawer-bg: #1a1a1a;
+        }
+
+        body.light-theme {
+            --primary: #FF8F00;
+            --bg: #F4F4F9;
+            --panel: #FFFFFF;
+            --text: #333333;
+            --active-bg: #E0E0E0;
+            --drawer-bg: #ffffff;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding-bottom: 150px;
+            transition: 0.3s;
+            overflow-x: hidden; /* Yan menü için */
+        }
+
+        /* HEADER */
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 20px; background: var(--panel);
+            position: sticky; top: 0; z-index: 50;
+            border-bottom: 1px solid #333;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        h1 { margin: 0; font-size: 1.2rem; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+        .theme-btn { background: none; border: none; color: var(--text); font-size: 1.3rem; cursor: pointer; padding: 5px; }
+
+        /* BAŞLATMA EKRANI */
+        #startOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.98); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 99999;
+            text-align: center; padding: 20px;
+        }
+        .big-start-btn {
+            display: block; width: 80%; max-width: 300px; padding: 25px; 
+            font-size: 1.5rem; background: var(--primary); color: #000;
+            border: none; border-radius: 50px; font-weight: bold; margin-top: 30px; 
+            box-shadow: 0 0 25px var(--primary); animation: pulse 1.5s infinite;
+            cursor: pointer;
+        }
+        @keyframes pulse { 0% {transform:scale(1);} 50% {transform:scale(1.05);} 100% {transform:scale(1);} }
+
+        .container { width: 92%; max-width: 600px; margin: 20px auto; }
+        .panel { background: var(--panel); padding: 15px; border-radius: 15px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+
+        textarea {
+            width: 100%; height: 130px; background: var(--bg);
+            color: var(--text); border: 1px solid #555; padding: 15px;
+            border-radius: 10px; font-size: 1rem; resize: vertical; outline: none;
+        }
+
+        .action-btn {
+            padding: 15px; width: 100%; border-radius: 10px; border: none;
+            font-weight: bold; font-size: 1rem; cursor: pointer;
+            margin-top: 10px; transition: 0.2s;
+            background: var(--primary); color: #000;
+        }
+
+        .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .mode-btn {
+            background: var(--panel); color: var(--text);
+            border: 1px solid #444; padding: 15px; border-radius: 10px;
+            font-size: 0.9rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px;
+        }
+        .mode-full { grid-column: span 2; background: var(--primary); color: #000; border: none; font-weight: bold; font-size: 1rem;}
+
+        /* SAHNE */
+        .script-line {
+            padding: 15px; margin-bottom: 10px;
+            background: var(--panel); border-radius: 10px;
+            font-size: 1.1rem; line-height: 1.5;
+            border-left: 4px solid transparent;
+            transition: all 0.2s;
+        }
+        .script-line.active {
+            border-left-color: var(--primary); background: var(--active-bg);
+            transform: scale(1.01); box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .my-line { border-left-color: var(--success); background: rgba(76, 175, 80, 0.05); }
+        .char-label { display: block; font-size: 0.75rem; font-weight: bold; color: #888; margin-bottom: 5px; text-transform: uppercase; }
+        .my-line .char-label { color: var(--success); }
+
+        /* BLUR MODE */
+        .blur-mode .my-line .text-content {
+            color: transparent; text-shadow: 0 0 12px var(--text); user-select: none;
+        }
+
+        /* YAZMA MODU ARAÇLARI */
+        .write-tools { display: flex; gap: 10px; margin-top: 10px; }
+        .write-tools button { flex: 1; padding: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
+
+        /* --- SAĞ MENÜ (DRAWER) --- */
+        #sceneDrawer {
+            position: fixed; top: 0; right: -300px; width: 280px; height: 100%;
+            background: var(--drawer-bg); z-index: 200;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+            transition: right 0.3s ease;
+            overflow-y: auto; padding: 20px;
+            border-left: 1px solid #444;
+        }
+        #sceneDrawer.open { right: 0; }
+        
+        .drawer-title { font-size: 1.2rem; color: var(--primary); margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px; display: flex; justify-content: space-between; }
+        .drawer-item {
+            padding: 12px; border-bottom: 1px solid #333; cursor: pointer;
+            font-size: 0.9rem; color: #aaa; transition: 0.2s;
+        }
+        .drawer-item:hover { background: #333; color: #fff; }
+        .drawer-item strong { display: block; color: var(--primary); margin-bottom: 3px; }
+        .drawer-item.current { border-left: 3px solid var(--success); background: rgba(76, 175, 80, 0.1); color: #fff;}
+
+        /* OVERLAY (Drawer açılınca arka planı karart) */
+        #drawerOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 199; display: none;
+        }
+        #drawerOverlay.open { display: block; }
+
+
+        /* KONTROL BAR */
+        #controlBar {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: var(--panel); border-top: 1px solid #333;
+            padding: 15px 20px 30px 20px; display: none;
+            justify-content: space-around; align-items: center;
+            z-index: 100; box-shadow: 0 -5px 20px rgba(0,0,0,0.4);
+        }
+        .ctrl-btn {
+            width: 50px; height: 50px; border-radius: 50%;
+            font-size: 1.3rem; display: flex; align-items: center; justify-content: center; padding: 0;
+            border: none; cursor: pointer; box-shadow: 0 3px 8px rgba(0,0,0,0.3); touch-action: manipulation;
+        }
+        .btn-stop { background: var(--danger); color: #fff; }
+        .btn-play { background: var(--primary); color: #000; width: 65px; height: 65px; font-size: 1.6rem; transform: translateY(-10px); box-shadow: 0 5px 15px var(--primary); }
+        .btn-eye { background: #444; color: #fff; }
+        .btn-eye.active { background: var(--text); color: var(--bg); border: 2px solid var(--primary); }
+        .btn-list { background: #444; color: #fff; } /* Sahne Liste Butonu */
+
+        #statusMsg { 
+            position: fixed; bottom: 120px; width: 100%; 
+            text-align: center; font-size: 1.1rem; color: var(--primary); 
+            font-weight: bold; text-shadow: 0 2px 4px #000; 
+            display: none; pointer-events: none; 
+        }
+
+        footer { text-align: center; padding: 30px 20px; margin-top: 30px; border-top: 1px solid #333; color: #666; font-size: 0.9rem;}
+        .footer-links { margin-top: 15px; display: flex; justify-content: center; gap: 30px; }
+        .footer-links a { text-decoration: none; color: var(--text); font-size: 2rem; }
+        .dev-name { color: var(--primary); font-weight: bold; }
+
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>🎭 ReplikUstası</h1>
+    <button class="theme-btn" onclick="toggleTheme()"><i class="fas fa-moon" id="themeIcon"></i></button>
+</header>
+
+<div id="startOverlay">
+    <h1 style="color:var(--primary); margin-bottom:10px;">Prova Odası</h1>
+    <p style="color:#ccc; max-width: 300px; font-size:0.9rem;">Ses motorunu aktifleştirmek için butona bas.</p>
+    <button id="startBtn" class="big-start-btn">BAŞLAT 🔊</button>
+</div>
+
+<div class="container" id="mainApp" style="display:none;">
+    
+    <div class="panel" id="step1">
+        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+            <h2>📝 Senaryo</h2>
+            <span style="font-size:0.8rem; color:#aaa; align-self:center;">Oto-Kayıt</span>
+        </div>
+        <textarea id="scriptInput" placeholder="Senaryonu yapıştır...&#10;AHMET: Nasılsın?&#10;AYŞE: İyiyim."></textarea>
+        <button class="action-btn" onclick="analyzeText()">Analiz Et</button>
+    </div>
+
+    <div class="panel" id="step2" style="display:none;">
+        <h2>👤 Rol Seçimi</h2>
+        <select id="charSelect" style="width:100%; padding:15px; background:var(--bg); color:var(--text); border:1px solid #555; border-radius:10px; margin-bottom:15px; font-size:1rem;"></select>
+        
+        <button class="action-btn" onclick="goToStage()">Prova Başlasın</button>
+        <button class="action-btn" style="background:#444; color:#fff; margin-top:10px;" onclick="backToScript()">✏️ Düzenle</button>
+    </div>
+
+    <div id="step3" style="display:none;">
+        <div class="mode-grid">
+            <button class="mode-btn" onclick="setMode(1)"><i class="fas fa-book-open"></i> Okuma</button>
+            <button class="mode-btn" onclick="setMode(2)"><i class="fas fa-mask"></i> İpucu</button>
+            <button class="mode-btn" onclick="setMode(3)"><i class="fas fa-pen"></i> Yazma</button>
+            <button class="mode-btn" onclick="setMode(5)"><i class="fas fa-chart-pie"></i> Analiz</button>
+            <button class="mode-full" onclick="setMode(4)">🎙️ OTOMATİK SESLİ PROVA</button>
+        </div>
+        <div id="stageArea"></div>
+    </div>
+
+</div>
+
+<div id="statusMsg"></div>
+
+<div id="controlBar">
+    <button class="ctrl-btn btn-stop" onclick="stopRehearsal()"><i class="fas fa-stop"></i></button>
+    <button class="ctrl-btn btn-eye" id="eyeBtn" onclick="toggleBlur()"><i class="fas fa-eye"></i></button>
+    
+    <button class="ctrl-btn btn-play" id="playPauseBtn" onclick="togglePlay()"><i class="fas fa-play"></i></button>
+    
+    <button class="ctrl-btn btn-list" onclick="toggleDrawer()"><i class="fas fa-list-ul"></i></button>
+</div>
+
+<div id="drawerOverlay" onclick="toggleDrawer()"></div>
+<div id="sceneDrawer">
+    <div class="drawer-title">
+        <span>Sahne Seç</span>
+        <i class="fas fa-times" onclick="toggleDrawer()" style="cursor:pointer"></i>
+    </div>
+    <div id="drawerContent">
+        </div>
+</div>
+
+<footer>
+    <p>Geliştirici: <span class="dev-name">Abdüssamed Görgülü</span></p>
+    <div class="footer-links">
+        <a href="https://www.instagram.com/sametgrglx?igsh=MTFyOWxhZmJ0ZTJqZQ%3D%3D&utm_source=qr" target="_blank"><i class="fab fa-instagram"></i></a>
+        <a href="https://github.com/smtby05" target="_blank"><i class="fab fa-github"></i></a>
+    </div>
+</footer>
+
+<script>
+    // DEĞİŞKENLER
+    let scriptData = [];
+    let myCharacter = "";
+    let currentMode = 0;
+    let currentIndex = 0;
+    let isPlaying = false;
+    let isPaused = false;
+    let isBlurActive = false;
+    let autoTimer = null;
+    let synth = window.speechSynthesis;
+    let selectedVoice = null;
+    let speechRate = 0.9;
+
+    // MOBİL SES BAŞLATMA
+    const startBtn = document.getElementById('startBtn');
+    startBtn.addEventListener('touchend', initAudio);
+    startBtn.addEventListener('click', initAudio);
+
+    function initAudio(e) {
+        if(e) e.preventDefault();
+        startBtn.innerText = "Yükleniyor...";
+        
+        let voices = synth.getVoices();
+        selectedVoice = voices.find(v => v.lang.includes('tr')) || voices[0];
+        
+        let u = new SpeechSynthesisUtterance("Hazır.");
+        if(selectedVoice) u.voice = selectedVoice;
+        synth.speak(u);
+
+        setTimeout(() => {
+            document.getElementById('startOverlay').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+        }, 500);
+    }
+    if(speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = function() {
+            let voices = synth.getVoices();
+            selectedVoice = voices.find(v => v.lang.includes('tr')) || voices[0];
+        };
+    }
+
+    window.onload = function() {
+        let saved = localStorage.getItem('myScript');
+        if(saved) document.getElementById('scriptInput').value = saved;
+    }
+
+    function toggleTheme() {
+        document.body.classList.toggle('light-theme');
+        let icon = document.getElementById('themeIcon');
+        icon.className = document.body.classList.contains('light-theme') ? "fas fa-sun" : "fas fa-moon";
+    }
+
+    function speak(text, callback) {
+        synth.cancel();
+        let u = new SpeechSynthesisUtterance(text);
+        if(selectedVoice) u.voice = selectedVoice;
+        u.lang = 'tr-TR'; u.rate = speechRate;
+        u.onend = () => { if(callback) callback(); };
+        u.onerror = () => { if(callback) callback(); };
+        window.currentUtterance = u;
+        synth.speak(u);
+    }
+
+    function analyzeText() {
+        let text = document.getElementById('scriptInput').value;
+        if(!text.trim()) return alert("Metin yok!");
+        localStorage.setItem('myScript', text);
+
+        scriptData = [];
+        let lines = text.split('\n');
+        let chars = new Set();
+        lines.forEach(line => {
+            if(line.includes(':')) {
+                let parts = line.split(':');
+                let c = parts[0].trim().toUpperCase();
+                let t = parts.slice(1).join(':').trim();
+                if(c && t) { scriptData.push({char:c, text:t}); chars.add(c); }
+            }
+        });
+        if(scriptData.length === 0) return alert("Hatalı Format!");
+
+        let sel = document.getElementById('charSelect');
+        sel.innerHTML = "";
+        chars.forEach(c => {
+            let opt = document.createElement('option');
+            opt.value = c; opt.innerText = c;
+            sel.appendChild(opt);
+        });
+
+        document.getElementById('step1').style.display = 'none';
+        document.getElementById('step2').style.display = 'block';
+    }
+
+    function backToScript() {
+        document.getElementById('step2').style.display = 'none';
+        document.getElementById('step1').style.display = 'block';
+    }
+
+    function goToStage() {
+        myCharacter = document.getElementById('charSelect').value;
+        document.getElementById('step2').style.display = 'none';
+        document.getElementById('step3').style.display = 'block';
+        setMode(1);
+        renderDrawerList(); // Çekmece listesini hazırla
+    }
+
+    function setMode(mode) {
+        stopRehearsal(false);
+        currentMode = mode;
+        currentIndex = 0;
+        let stage = document.getElementById('stageArea');
+        stage.innerHTML = "";
+        stage.classList.remove('blur-mode');
+        isBlurActive = false;
+        updateEyeBtn();
+        
+        document.getElementById('controlBar').style.display = 'none';
+        document.getElementById('statusMsg').style.display = 'none';
+
+        if(mode === 1) renderReadingMode();
+        else if(mode === 2) renderCueMode();
+        else if(mode === 3) renderWriteMode(0);
+        else if(mode === 4) startAutoRehearsal();
+        else if(mode === 5) renderAnalysis();
+    }
+
+    // --- SAHNE SEÇİCİ (DRAWER) ---
+    function toggleDrawer() {
+        let d = document.getElementById('sceneDrawer');
+        let o = document.getElementById('drawerOverlay');
+        if(d.classList.contains('open')) {
+            d.classList.remove('open');
+            o.classList.remove('open');
+        } else {
+            d.classList.add('open');
+            o.classList.add('open');
+        }
+    }
+
+    function renderDrawerList() {
+        let content = document.getElementById('drawerContent');
+        content.innerHTML = "";
+        scriptData.forEach((line, idx) => {
+            let div = document.createElement('div');
+            div.className = "drawer-item";
+            if(idx === currentIndex) div.classList.add('current');
+            div.innerHTML = `<strong>${line.char}</strong> ${line.text.substring(0,30)}...`;
+            div.onclick = () => jumpToScene(idx);
+            content.appendChild(div);
+        });
+    }
+
+    function jumpToScene(idx) {
+        // Çekmeceyi kapat
+        toggleDrawer();
+        
+        // Eğer sesli prova modundaysak anında oraya atla ve başlat
+        if(currentMode === 4) {
+            synth.cancel(); clearTimeout(autoTimer); // Mevcut konuşmayı kes
+            currentIndex = idx;
+            isPlaying = true; isPaused = false;
+            updateBtn();
+            processAutoLine();
+        } else {
+            // Diğer modlardaysa sadece index'i güncelle
+            currentIndex = idx;
+            // Modu yenile
+            setMode(currentMode);
+        }
+    }
+
+    // --- OTO SESLİ PROVA ---
+    function startAutoRehearsal() {
+        currentIndex = 0;
+        isPlaying = true; isPaused = false;
+        document.getElementById('controlBar').style.display = 'flex';
+        document.getElementById('statusMsg').style.display = 'block';
+        
+        let stage = document.getElementById('stageArea');
+        scriptData.forEach((l, i) => {
+            let d = createLineDiv(l);
+            d.id = "line-" + i;
+            stage.appendChild(d);
+        });
+        processAutoLine();
+    }
+
+    function processAutoLine() {
+        if(!isPlaying || isPaused) return;
+        if(currentIndex >= scriptData.length) {
+            document.getElementById('statusMsg').innerText = "Sahne Bitti 👏";
+            isPlaying = false; updateBtn(); return;
+        }
+
+        document.querySelectorAll('.script-line').forEach(e => e.classList.remove('active'));
+        let el = document.getElementById('line-'+currentIndex);
+        if(el) {
+            el.classList.add('active');
+            el.scrollIntoView({behavior:"smooth", block:"center"});
+        }
+
+        // Çekmecedeki aktif satırı güncelle (arka planda kalsa da)
+        renderDrawerList(); 
+
+        let line = scriptData[currentIndex];
+
+        if(line.char !== myCharacter) {
+            document.getElementById('statusMsg').innerText = line.char + " konuşuyor...";
+            speak(line.text, () => {
+                currentIndex++;
+                setTimeout(processAutoLine, 500);
+            });
+        } else {
+            document.getElementById('statusMsg').innerText = "🎤 SIRA SENDE!";
+            let duration = Math.max(2000, line.text.split(' ').length * 600 + 1500);
+            autoTimer = setTimeout(() => {
+                currentIndex++;
+                processAutoLine();
+            }, duration);
+        }
+    }
+
+    // --- MODLAR ---
+    function renderReadingMode() {
+        scriptData.forEach(l => document.getElementById('stageArea').appendChild(createLineDiv(l)));
+    }
+    function renderCueMode() {
+        scriptData.forEach(l => {
+            let d = (l.char === myCharacter) 
+                ? createDivWithHtml(`<span class="char-label">${myCharacter}</span><span style="opacity:0.5;">(Sıra sende...)</span>`, true)
+                : createDivWithHtml(`<span class="char-label">${l.char}</span><span style="opacity:0.6;">${l.text}</span>`, false);
+            document.getElementById('stageArea').appendChild(d);
+        });
+    }
+    function renderAnalysis() {
+        let lines = scriptData.filter(l => l.char === myCharacter);
+        document.getElementById('stageArea').innerHTML = `<div class="panel" style="border-left:5px solid var(--primary)"><h3>📊 Analiz</h3><p>Replik Sayısı: ${lines.length}</p></div>`;
+    }
+
+    // --- YAZMA MODU (GELİŞMİŞ) ---
+    function renderWriteMode(idx) {
+        let stage = document.getElementById('stageArea');
+        stage.innerHTML = "";
+        if(idx >= scriptData.length) { stage.innerHTML = "<h3 style='text-align:center'>Bitti</h3>"; return; }
+        
+        if(idx > 0) {
+            let prev = createLineDiv(scriptData[idx-1]);
+            prev.style.opacity = 0.5; stage.appendChild(prev);
+        }
+
+        let line = scriptData[idx];
+        if(line.char !== myCharacter) {
+            let d = createLineDiv(line);
+            let btn = document.createElement('button');
+            btn.innerText = "Sonraki"; btn.className = "action-btn"; btn.style.background="#444"; btn.style.color="#fff";
+            btn.onclick = () => renderWriteMode(idx+1);
+            d.appendChild(btn); stage.appendChild(d);
+        } else {
+            let d = document.createElement('div');
+            d.className = "script-line my-line active";
+            d.innerHTML = `
+                <span class="char-label">${myCharacter}</span>
+                <input type="text" id="wInput" style="width:100%; padding:15px; border-radius:5px; border:1px solid #555; background:#000; color:#fff; font-size:1rem;" placeholder="Yaz..." autocomplete="off">
+                <div id="fb" style="margin-top:10px; font-weight:bold; min-height:20px;"></div>
+                <div class="write-tools">
+                    <button style="background:var(--hint); color:#fff;" onclick="giveHint(${idx})">💡 İpucu</button>
+                    <button style="background:#555; color:#fff;" onclick="showAnswer(${idx})">👀 Cevap</button>
+                    <button id="checkBtn" style="background:var(--success); color:#fff; flex:2;" onclick="checkWrite(${idx})">Kontrol</button>
+                </div>
+            `;
+            stage.appendChild(d);
+            setTimeout(()=>document.getElementById('wInput').focus(),100);
+        }
+    }
+
+    function giveHint(idx) {
+        let words = scriptData[idx].text.split(' ');
+        document.getElementById('fb').innerHTML = `<span style='color:var(--hint)'>İpucu: ${words.slice(0, Math.min(3, words.length)).join(' ')}...</span>`;
+    }
+    function showAnswer(idx) {
+        document.getElementById('fb').innerHTML = `<span style='color:var(--primary)'>${scriptData[idx].text}</span>`;
+        document.getElementById('wInput').value = scriptData[idx].text;
+        let btn = document.getElementById('checkBtn');
+        btn.innerText = "Devam Et ➡️"; btn.style.background="#444";
+        btn.onclick = () => renderWriteMode(idx+1);
+    }
+    function checkWrite(idx) {
+        let val = document.getElementById('wInput').value.toLowerCase().replace(/[.,!]/g,'').trim();
+        let real = scriptData[idx].text.toLowerCase().replace(/[.,!]/g,'').trim();
+        if(val === real || real.includes(val) && val.length > 3) {
+            document.getElementById('fb').innerHTML = "<span style='color:var(--success)'>✅ Doğru!</span>";
+            let btn = document.getElementById('checkBtn');
+            btn.innerText = "Sonraki"; btn.style.background="var(--primary)"; btn.style.color="#000";
+            btn.onclick = () => renderWriteMode(idx+1);
+        } else {
+            document.getElementById('fb').innerHTML = "<span style='color:var(--danger)'>❌ Yanlış</span>";
+        }
+    }
+
+    // --- YARDIMCILAR ---
+    function togglePlay() {
+        if(isPlaying && !isPaused) { isPaused=true; synth.cancel(); clearTimeout(autoTimer); }
+        else { isPaused=false; if(!isPlaying) startAutoRehearsal(); else processAutoLine(); }
+        updateBtn();
+    }
+    function toggleBlur() {
+        isBlurActive = !isBlurActive;
+        let s = document.getElementById('stageArea');
+        if(isBlurActive) s.classList.add('blur-mode'); else s.classList.remove('blur-mode');
+        updateEyeBtn();
+    }
+    function stopRehearsal(goBack = true) {
+        isPlaying=false; isPaused=false; synth.cancel(); clearTimeout(autoTimer);
+        document.getElementById('controlBar').style.display='none';
+        document.getElementById('statusMsg').style.display='none';
+        if(goBack) setMode(1);
+    }
+    function updateBtn() {
+        document.getElementById('playPauseBtn').innerHTML = (isPaused||!isPlaying) ? '<i class="fas fa-play"></i>' : '<i class="fas fa-pause"></i>';
+    }
+    function updateEyeBtn() {
+        let btn = document.getElementById('eyeBtn');
+        btn.className = isBlurActive ? "ctrl-btn btn-eye active" : "ctrl-btn btn-eye";
+        btn.innerHTML = isBlurActive ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+    }
+    function createLineDiv(line) {
+        let d = document.createElement('div'); d.className="script-line";
+        if(line.char===myCharacter) d.classList.add('my-line');
+        d.innerHTML = `<span class="char-label">${line.char}</span><span class="text-content">${line.text}</span>`;
+        return d;
+    }
+    function createDivWithHtml(html, isMine) {
+        let d=document.createElement('div'); d.className="script-line";
+        if(isMine) d.classList.add('my-line');
+        d.innerHTML = html; return d;
+    }
+
+</script>
+</body>
+</html>
